@@ -40,5 +40,18 @@ model = MLP(deep=6, wide=4096, epochs=1000)
 mnist_data = MNISTRandom(label_corrupt_p=0.0)
 model.train(mnist_data)
 model.save('mnist_0.0lcp_rep0', SAVE_FOLD)
+```
 
 # 2. Linear probes improve over training 
+```python
+# we compute the RCV for a set of concepts 
+# at different layers (layers_of_interest) and every 50 epochs during training
+# we evaluate the rsquared and MSE of the regression
+for e in range(0,last_epoch, 50):
+    r2 = reg_at_epoch(e,exps_folder,0)
+    for l in layers_of_interest:
+        r2 = reg_at_epoch(e, l, exps_folder)
+        for c in concepts:
+            r2ss[c][l].append(r2[c])
+# r2ss is a dictionary with concepts and layers as keys
+# for a couple concept, layer there is a list of the r2 over the training epochs
