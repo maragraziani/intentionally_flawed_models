@@ -5,6 +5,19 @@ submitted to SDVLC at ICCV2019
 
 ## 1. Train models
 
+- shallowCNN on ImageNet10, see train_imgnt10.ipynb
+
+```python
+#create model
+cnn = CNN(deep=2)
+#load dataset: label_corrupt_p is the fraction of label corruption
+imagenet10=ImageNet10Random(classes=classes, path_to_train='./data-train.h5', path_to_val='./data-val.h5')
+#model training
+model.train(imagenet10)
+#save model weights
+model.save('imgnet_model', './results/trained_models')
+```
+
 - InceptionV3 on DTD, see dtd_experiments.ipynb
 
 ```python
