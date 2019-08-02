@@ -36,8 +36,9 @@ inceptionv3.save('dtd_0.0lcp_rep0', SAVE_FOLD)
 - MLP on MNIST, see mnist_experiments.ipynb
 
 ```python
-#create model
 model = MLP(deep=6, wide=4096, epochs=1000)
 mnist_data = MNISTRandom(label_corrupt_p=0.0)
 model.train(mnist_data)
 model.save('mnist_0.0lcp_rep0', SAVE_FOLD)
+
+# 2. Linear probes improve over training 
