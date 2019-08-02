@@ -5,7 +5,7 @@ submitted to SDVLC at ICCV2019
 
 ## 1. Train models
 
-- DTD training is in dtd_experiments.ipynb
+- InceptionV3 on DTD, see dtd_experiments.ipynb
 
 ```python
 #create model
