@@ -7,7 +7,7 @@ submitted to SDVLC at ICCV2019
 
 - DTD training is in dtd_experiments.ipynb
 
-''' python
+```python
 
 #create model
 
@@ -21,4 +21,4 @@ dataset = Dataset(train_data, val_data, test_data, label_corrupt_p = 0.0, random
 inceptionv3.train_and_compute_rcvs(dataset, layers_of_interest=['mixed0', 'mixed2','mixed4', 'mixed6'])
 #save model weights
 inceptionv3.save('random_fix_0.0lcp_rep0', 'results/trained_models')
-'''
+```
