@@ -42,7 +42,7 @@ model.train(mnist_data)
 model.save('mnist_0.0lcp_rep0', SAVE_FOLD)
 ```
 
-# 2. Linear probes improve over training 
+## 2. Linear probes improve over training 
 ```python
 # we compute the RCV for a set of concepts 
 # at different layers (layers_of_interest) and every 50 epochs during training
