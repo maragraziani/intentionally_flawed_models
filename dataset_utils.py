@@ -280,13 +280,20 @@ class ImageNet10Random():
       Default 10.
     '''
 
-    def __init__(self, label_corrupt_p=0.0, gaussian_noise_f = 0.0, classes=[], path_to_train='', path_to_val='', **kwargs):
-        #super(CIFAR10Random, self).__init__(**kwargs)
-        #import pdb; pdb.set_trace()
+    def __init__(self, label_corrupt_p=0.0,
+                 gaussian_noise_f = 0.0,
+                 classes=[],
+                 path_to_train='',
+                 path_to_val='',
+                 random_seed=1,
+                 **kwargs):
         (self.x_train, self.y_train), (self.x_test, self.y_test) = get_imgnt_datasets(classes, path_to_train, path_to_val)
         self.num_classes = len(classes)
-        # note: corruption is performed on the training set.
-        # you test on real data to check generalization
+
+        self._train_mask = np.zeros(len(self.y_train))
+
+        self.seed = random_seed
+
         if label_corrupt_p > 0.0:
             self.label_corrupt(label_corrupt_p)
         if gaussian_noise_f > 0.0:
@@ -297,14 +304,21 @@ class ImageNet10Random():
         # the specified corruption probability
         labels=np.array(self.y_train)
         #labels = np.reshape(len(labels),1)
-        np.random.seed(1)
+        np.random.seed(self.seed)
         mask = np.random.rand(len(labels)) <= corrupted
-        rnd_labels = np.random.choice(self.num_classes, mask.sum())
-        rnd_labels = np.reshape(rnd_labels, (len(rnd_labels),1))
-        labels[mask] = rnd_labels
-        labels = [int(x) for x in labels]
+        true_labels = labels[mask]
+        print true_labels, np.shape(true_labels)
+        np.random.shuffle(true_labels)
+        print true_labels, np.shape(true_labels)
+
+        #rnd_labels = np.random.choice(self.num_classes, mask.sum())
+        #rnd_labels = np.reshape(rnd_labels, (len(rnd_labels),1))
+        #labels[mask] = rnd_labels
+        labels[mask] = true_labels
+        #labels = [int(x) for x in labels]
         # corruption
         self.y_train = labels
+        self.train_mask = mask
 
     def gaussian_noise(self, gaussian_noise_f):
         # Adds Gaussian Noise to the images,
@@ -469,3 +483,27 @@ def get_data(dataset, classes):
     data = np.concatenate([d for d in data])
     labels = np.concatenate([l for l in labels])
     return data, labels
+
+def print_info(name, obj):
+    print name
+
+def get_data(dataset, classes):
+    data=[]
+    labels=[]
+    l=0
+    for c in classes:
+        data.append(np.asarray(dataset[c][:]))
+        labels.append(np.asarray([l]* len(dataset[c])))
+        #import pdb; pdb.set_trace()
+        l+=1
+    data = np.concatenate([d for d in data])
+    labels = np.concatenate([l for l in labels])
+    return data, labels
+
+def get_imgnt_datasets(classes, path_to_train, path_to_val):
+    print path_to_train, path_to_val
+    dataset = h5py.File(path_to_train, 'r')
+    dataset_val = h5py.File(path_to_val, 'r')
+    x_train, y_train = get_data(dataset, classes)
+    x_val, y_val = get_data(dataset_val, classes)
+    return (x_train, y_train), (x_val, y_val)
