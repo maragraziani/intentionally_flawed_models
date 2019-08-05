@@ -4,7 +4,7 @@ import keras.datasets
 
 import matplotlib.pyplot as plt
 import keras
-from memorization_utils import *
+#from memorization_utils import *
 import os
 from sklearn.linear_model import Ridge
 import sys
