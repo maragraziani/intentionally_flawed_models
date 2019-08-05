@@ -190,7 +190,7 @@ class CNN():
     '''
 
     def __init__(self, deep=2, wide=384, optimizer='SGD', lr=1e-2, epochs=9,
-                 batch_size=16, input_shape=299, n_classes=10, **kwargs):
+                 batch_size=16, input_shape=299, n_classes=10, save_fold='', **kwargs):
 
         #mask_shape = np.ones((1,512))
         #mask = keras.backend.variable(mask_shape)
@@ -238,7 +238,7 @@ class CNN():
         self.epochs = epochs
         self.batch_size = batch_size
         self.n_classes = n_classes
-
+        self.save_fold = save_fold
 
     def train(self, dataset):
         #import pdb; pdb.set_trace()
@@ -273,33 +273,17 @@ class CNN():
         history=self.model.fit(x_train, y_train, epochs=self.epochs, batch_size=self.batch_size, validation_data=(x_test, y_test))
         self.training_history=history
 
-    def train_and_compute_rcvs(self, dataset, name='imagenet_0.8lcp_', loi=[6,11,14]):
-        '''
-        Train and Compute RCVs
-          Saves the embeddings at each epoch in a npy file.
-        dataset: Object of class either MNISTRandom, ImageNet10Random or Cifar10Random
-          gives the object with rhe training data (dataset.x_train, dataset.y_train)
-        name, string
-          says the dataset name and if the dataet is corrupted with label corruption (lcp)
-          or gaussian noise in the inputs (gnf). For example, if the datset is imagenet and we want to specify
-          the respective lcp (x.xlcp_), or gnf values (x.xgnf_)
-          we write datasetname_x.x followed by the name of the corruption, f.e.
-          imagenet_0.8lcp_ for label corruption with probability 0.8
-          or imagenet_0.5gnf_ for gaussian noise fraction of 0.5
-        loi, list
-          allows to specify which layers we want to extract the embeddings from.
-          ex.[6,11,14]
-        '''
+    def train_and_compute_rcvs(self, dataset):
+
         x_train = dataset.x_train/255.
         x_train -= np.mean(x_train)
+        y_train = dataset.y_train
         np.random.seed(0)
         idxs_train = np.arange(len(x_train))
         np.random.shuffle(idxs_train)
         x_train = np.asarray(x_train[idxs_train])
+        y_train= np.asarray(y_train)
         y_train = y_train[idxs_train]
-        y_train = dataset.y_train
-        #if x_train
-        #x_train = x_train / 255.0
 
         try:
             shape1, shape2 = y_train.shape()
@@ -311,9 +295,17 @@ class CNN():
         batch_size=self.batch_size
         print self.model.summary()
 
+        #layers_of_interest = [layer.name for layer in self.model.layers[2:-1]]
+        if self.deep==2:
+            layer_idxs = [9,13,16]
+        if self.deep==3:
+             layer_idxs = [9,12,14]
+        if self.deep==4:
+             layer_idxs = [9,12,15,19,22]
+        if self.deep==5:
+             layer_idxs = [9,12,15,18,22,25]
 
-        ##### NOTE: the loi change from model to model
-        layers_of_interest = [self.model.layers[layer_idx].name for layer_idx in loi]
+        layers_of_interest = [self.model.layers[layer_idx].name for layer_idx in layer_idxs]
         print 'loi', layers_of_interest
         self.model.metrics_tensors += [layer.output for layer in self.model.layers if layer.name in layers_of_interest]
         epoch_number = 0
@@ -327,9 +319,9 @@ class CNN():
             embedding_=[]
 
             for l in layers_of_interest:
-                print 'in layer ', l
-                print 'output shape ', self.model.get_layer(l).output.shape
-                print 'metrics tensors, ', self.model.metrics_tensors
+                #print 'in layer ', l
+                #print 'output shape ', self.model.get_layer(l).output.shape
+                #print 'metrics tensors, ', self.model.metrics_tensors
                 if len(self.model.get_layer(l).output.shape)<=2:
                     space = np.zeros((len(x_train), self.model.get_layer(l).output.shape[-1]))
                 else:
@@ -344,23 +336,189 @@ class CNN():
                 outs=self.model.train_on_batch(
                     x_train[batch_number*batch_size:batch_number*batch_size + batch_size],
                     y_train[batch_number*batch_size:batch_number*batch_size + batch_size])
-                #import pdb;pdb.set_trace()
-                #print out[0]
-                embedding_[0][batch_number*batch_size: batch_number*batch_size+batch_size]=outs[2].reshape((min(batch_size,len(outs[2])),-1))
+                embedding_[0][batch_number*batch_size: batch_number*batch_size+batch_size]= outs[2].reshape((min(batch_size,len(outs[2])),-1))
                 embedding_[1][batch_number*batch_size: batch_number*batch_size+batch_size]=outs[3].reshape((len(outs[3]),-1))
                 embedding_[2][batch_number*batch_size: batch_number*batch_size+batch_size]=outs[4].reshape((len(outs[4]),-1))
                 #embedding_[3][batch_number*batch_size: batch_number*batch_size+batch_size]=outs[5].reshape((len(outs[5]),-1))
 
+                history.append(outs[0])
+                batch_number+=1
+            #print self.save_fold
+            source = self.save_fold#'/mnt/nas2/results/IntermediateResults/Mara/probes/imagenet/2H_lcp0.5'
+            c=0
+            if True:
+                for l in layers_of_interest:
+                    if 'max_pooling' in l:
+                        tosave_= np.mean(embedding_[c].reshape(12775, 23*23,200), axis=1)
+                        np.save('{}/imagenet_training_emb_e{}_l{}'.format(source,epoch_number, l), tosave_)
+                    else:
+                        np.save('{}/imagenet_training_emb_e{}_l{}'.format(source,epoch_number, l), embedding_[c])
+                    c+=1
+            del embedding_
+            epoch_number +=1
+        self.training_history=history
+        self.embeddings = embeddings
+
+    def _custom_eval(self, x, y, batch_size):
+        ## correcting shape-related issues
+        x = x.reshape(x.shape[0], x.shape[2], x.shape[3], x.shape[4])
+        y = y.reshape(y.shape[0],-1)
+        #
+        scores = []
+        val_batch_no = 0
+        start_batch = val_batch_no
+        end_batch = start_batch + batch_size
+        tot_batches = len(y) / batch_size
+        # looping over data
+        while val_batch_no < tot_batches:
+            score = self.model.test_on_batch(x[start_batch:end_batch, :299, :299, :3],
+                                             y[start_batch:end_batch])
+            scores.append(score[1])
+            val_batch_no += 1
+            start_batch = end_batch
+            end_batch += batch_size
+        #print("Val: {}".format(np.mean(np.asarray(scores))))
+        return np.mean(np.asarray(scores))
+
+    def train_and_monitor_with_rcvs(self, dataset, layers_of_interest=[], directory_save='',custom_epochs=0):
+        '''
+        Train and Monitor with RCVs
+        \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+          Similar to train and compute RCVs, we just keep track
+          of accuracy, partial accuracy (split in true and false labels)
+          and we keep track of the embeddings corresponding to true and
+          false labels.
+          The function saves the embeddings at each epoch in a npy file.
+          The mask of corrupted labels is saved in a separated npy file.
+        \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+        Inputs:
+        dataset: Object of class either MNISTRandom, ImageNet10Random or Cifar10Random
+          gives the object with rhe training data (dataset.x_train, dataset.y_train)
+        name, string
+          says the dataset name and if the dataet is corrupted with label corruption (lcp)
+          or gaussian noise in the inputs (gnf). For example, if the datset is imagenet and we want to specify
+          the respective lcp (x.xlcp_), or gnf values (x.xgnf_)
+          we write datasetname_x.x followed by the name of the corruption, f.e.
+          imagenet_0.8lcp_ for label corruption with probability 0.8
+          or imagenet_0.5gnf_ for gaussian noise fraction of 0.5
+        layers_of_interest, list
+          allows to specify which layers we want to extract the embeddings from.
+          ex.[6,11,14]
+        '''
+        directory_save = self.save_fold
+        # train data with the original orderng (not shuffled yet)
+        x_train = dataset.x_train/255.
+        x_train -= np.mean(x_train)
+        y_train = dataset.y_train
+        # validation data with original orderng (not shuffled yet)
+        x_val = dataset.x_test
+        x_val -= np.mean(x_val)
+        y_val = dataset.y_test
+        # setting the seed for random
+        try:
+            np.random.seed(dataset.seed)
+        except:
+            np.random.seed(0)
+        # mask of bool values set to true if the corresponding datapoint
+        # was corrupted
+        train_mask = dataset.train_mask
+        # We shuffle the dataset indeces in a new array
+        idxs_train = np.arange(len(x_train))
+        np.random.shuffle(idxs_train)
+        # List of corrupted and uncorrupted indeces in
+        # the original ordering of the data
+        corrupted_idxs = np.argwhere(train_mask == True)
+        uncorrupted_idxs = np.argwhere(train_mask == False)
+        try:
+            np.save('{}/corrupted_idxs.npy'.format(directory_save,corrupted_idxs))
+        except:
+            print("ERROR saving corr idxs")
+        try:
+            np.save('{}/uncorrupted_idxs.npy'.format(directory_save,corrupted_idxs))
+        except:
+            print("ERROR saving uncorr idxs")
+        ## x_train and y_train contain the data with the new shuffling
+        orig_x_train=x_train
+        orig_y_train=y_train
+        x_train = np.asarray(x_train[idxs_train])
+        y_train = y_train[idxs_train]
+        #y_train = dataset.y_train
+        #if x_train
+        #x_train = x_train / 255.0
+        # converting the labels to categorical
+        try:
+            shape1, shape2 = y_train.shape()
+        except:
+            y_train = keras.utils.to_categorical(y_train)
+        # variables for logs and monitoring
+        history=[]
+        embeddings=[]
+        batch_size=self.batch_size
+        print self.model.summary()
+        ##### NOTE: the loi change from model to model
+        layers_of_interest = [self.model.layers[layer_idx].name for layer_idx in layers_of_interest]
+        print 'loi', layers_of_interest
+        self.model.metrics_tensors += [layer.output for layer in self.model.layers if layer.name in layers_of_interest]
+        epoch_number = 0
+        n_batches = len(x_train)/self.batch_size
+        remaining = len(x_train)-n_batches * self.batch_size
+        while epoch_number <= self.epochs:
+            print epoch_number
+            batch_number = 0
+            embedding_=[]
+            for l in layers_of_interest:
+                #print 'in layer ', l
+                #print 'output shape ', self.model.get_layer(l).output.shape
+                #print 'metrics tensors, ', self.model.metrics_tensors
+                if len(self.model.get_layer(l).output.shape)<=2:
+                    space = np.zeros((len(x_train), self.model.get_layer(l).output.shape[-1]))
+                else:
+                    x = self.model.get_layer(l).output.shape[-3]
+                    y = self.model.get_layer(l).output.shape[-2]
+                    z = self.model.get_layer(l).output.shape[-1]
+                    space = np.zeros((len(x_train), x*y*z))
+
+                embedding_.append(space)
+            while batch_number <= n_batches:
+                outs=self.model.train_on_batch(
+                    x_train[batch_number*batch_size:batch_number*batch_size + batch_size],
+                    y_train[batch_number*batch_size:batch_number*batch_size + batch_size])
+                embedding_[0][batch_number*batch_size: batch_number*batch_size+batch_size]=outs[2].reshape((min(batch_size,len(outs[2])),-1))
+                embedding_[1][batch_number*batch_size: batch_number*batch_size+batch_size]=outs[3].reshape((len(outs[3]),-1))
+                embedding_[2][batch_number*batch_size: batch_number*batch_size+batch_size]=outs[4].reshape((len(outs[4]),-1))
+                #embedding_[3][batch_number*batch_size: batch_number*batch_size+batch_size]=outs[5].reshape((len(outs[5]),-1))
                 #print outs, outs
                 history.append(outs[0])
                 batch_number+=1
-            import pdb; pdb.set_trace()
             c=0
             for l in layers_of_interest:
                 np.save('{}_training_emb_e{}_l{}'.format(name,epoch_number, l), embedding_[c])
                 c+=1
             del embedding_
-            #embeddings.append(embedding_)
+            # here we check the partial accuracy
+            if epoch_number %10 == 0:
+                corrupted_acc = self._custom_eval(orig_x_train[corrupted_idxs],
+                                                  orig_y_train[corrupted_idxs],
+                                                  batch_size
+                                                 )
+                uncorrupted_acc = self._custom_eval(orig_x_train[uncorrupted_idxs],
+                                                  orig_y_train[uncorrupted_idxs],
+                                                  batch_size
+                                                 )
+                try:
+                    with open(directory_save+'/corr_acc.txt', 'a') as log_file:
+                        log_file.write("{}, ".format(corrupted_acc))
+                except:
+                        log_file = open(directory_save+'/corr_acc.txt', 'w')
+                        log_file.write("{}, ".format(corrupted_acc))
+
+                try:
+                    with open(directory_save+'/uncorr_acc.txt', 'a') as log_file:
+                        log_file.write("{}, ".format(uncorrupted_acc))
+                except:
+                    log_file = open(directory_save+'/uncorr_acc.txt', 'w')
+                    log_file.write("{}, ".format(uncorrupted_acc))
+
             epoch_number +=1
         self.training_history=history
         self.embeddings = embeddings
