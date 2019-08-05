@@ -3,7 +3,7 @@ Mara Graziani, Henning Muller and Vincent Andrearczyk
 
 submitted to SDVLC at ICCV2019
 
-## 1. Train models
+## To train the models:
 
 - shallowCNN on ImageNet10, see train_imgnt10.ipynb
 
@@ -42,7 +42,7 @@ model.train(mnist_data)
 model.save('mnist_0.0lcp_rep0', SAVE_FOLD)
 ```
 
-## 2. Linear probes improve over training 
+## 2. To linearly probe the activations:
 
 #### Linear classification of the class labels
 ```python
@@ -74,8 +74,3 @@ for e in range(0,last_epoch, 50):
 # r2ss is a dictionary with concepts and layers as keys
 # for a couple concept, layer there is a list of the r2 over the training epochs
 ```
-
-## 3. Early layers learn simple concepts
-
-## 4. True labels are learned earlier than false labels
-
