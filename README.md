@@ -74,3 +74,8 @@ for e in range(0,last_epoch, 50):
 # r2ss is a dictionary with concepts and layers as keys
 # for a couple concept, layer there is a list of the r2 over the training epochs
 ```
+
+## 3. Early layers learn simple concepts
+
+## 4. True labels are learned earlier than false labels
+
