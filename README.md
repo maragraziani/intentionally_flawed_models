@@ -5,7 +5,7 @@ submitted to SDVLC at ICCV2019
 
 ## To train the models:
 
-- shallowCNN on ImageNet10, see train_imgnt10.ipynb
+- shallowCNN on ImageNet10, see train_imgnt.ipynb
 
 ```python
 # saving folder:
