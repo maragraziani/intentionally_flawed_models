@@ -43,8 +43,26 @@ model.save('mnist_0.0lcp_rep0', SAVE_FOLD)
 ```
 
 ## 2. Linear probes improve over training 
+
+#### Linear classification of the class labels
 ```python
-# we compute the RCV for a set of concepts 
+for epoch in range(10):
+    print 'Epoch {}'.format(epoch)
+    for layer in ['max_pooling2d_6', 'activation_13', 'activation_14']:
+        tr_acts = get_activations(model, layer, epoch)
+        #computing probe for each layer
+        probe = sklearn.svm.LinearSVC(verbose=1)
+        acts_train, acts_val = train_val_split(tr_acts)
+        probe.fit(acts_train.X, acts_train.y)
+        print 'Training linear probe at layer ', layer
+        score_def = probe.score(acts_val.X, acts_val.y)
+        print 'Predictive perf at layer {}, epoch {}: {}'.format(layer, epoch, score_def)
+```  
+
+#### RCVs
+
+```python
+# RCV for a set of concepts 
 # at different layers (layers_of_interest) and every 50 epochs during training
 # we evaluate the rsquared and MSE of the regression
 for e in range(0,last_epoch, 50):
@@ -55,3 +73,4 @@ for e in range(0,last_epoch, 50):
             r2ss[c][l].append(r2[c])
 # r2ss is a dictionary with concepts and layers as keys
 # for a couple concept, layer there is a list of the r2 over the training epochs
+```
