@@ -13,8 +13,8 @@ sys.path.append('../rcvs_fexps/iMIMIC-RCVs/')
 sys.path.append('../rcvs_fexps/iMIMIC-RCVs/scripts/')
 sys.path.append('../rcvs_fexps/iMIMIC-RCVs/scripts/keras_vis_rcv/')
 #from rcv_utils import *
-from mnist_utils import *
-import rcv_utils
+#from mnist_utils import *
+#import rcv_utils
 import PIL
 
 from scipy import misc
