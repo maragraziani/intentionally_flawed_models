@@ -411,7 +411,7 @@ class CNN():
         x_train -= np.mean(x_train)
         y_train = dataset.y_train
         # validation data with original orderng (not shuffled yet)
-        x_val = dataset.x_test
+        x_val = np.asarray(dataset.x_test, dtype=np.float64)
         x_val -= np.mean(x_val)
         y_val = dataset.y_test
         # setting the seed for random
@@ -430,11 +430,12 @@ class CNN():
         corrupted_idxs = np.argwhere(train_mask == True)
         uncorrupted_idxs = np.argwhere(train_mask == False)
         try:
-            np.save('{}/corrupted_idxs.npy'.format(directory_save,corrupted_idxs))
+            #import pdb; pdb.set_trace()
+            np.save('{}/corrupted_idxs.npy'.format(directory_save), corrupted_idxs)
         except:
             print("ERROR saving corr idxs")
         try:
-            np.save('{}/uncorrupted_idxs.npy'.format(directory_save,corrupted_idxs))
+            np.save('{}/uncorrupted_idxs.npy'.format(directory_save), uncorrupted_idxs)
         except:
             print("ERROR saving uncorr idxs")
         ## x_train and y_train contain the data with the new shuffling
