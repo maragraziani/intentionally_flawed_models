@@ -1,7 +1,5 @@
 # Interpreting Intentionally Flawed Models with Linear Probes
-Mara Graziani, Henning Muller and Vincent Andrearczyk
-
-submitted to SDVLC at ICCV2019
+Mara Graziani, Henning Muller and Vincent Andrearczyk, SDVLC at ICCV2019
 
 ## To train the models:
 
