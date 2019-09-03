@@ -365,6 +365,7 @@ class CNN():
         y = y.reshape(y.shape[0],-1)
         #
         scores = []
+        losses = []
         val_batch_no = 0
         start_batch = val_batch_no
         end_batch = start_batch + batch_size
@@ -373,12 +374,13 @@ class CNN():
         while val_batch_no < tot_batches:
             score = self.model.test_on_batch(x[start_batch:end_batch, :299, :299, :3],
                                              y[start_batch:end_batch])
+            losses.append(score[0])
             scores.append(score[1])
             val_batch_no += 1
             start_batch = end_batch
             end_batch += batch_size
         #print("Val: {}".format(np.mean(np.asarray(scores))))
-        return np.mean(np.asarray(scores))
+        return np.mean(np.asarray(losses)), np.mean(np.asarray(scores))
         
     def train_and_monitor_with_rcvs(self, dataset, layers_of_interest=[], directory_save='',custom_epochs=0):
         '''
@@ -505,30 +507,36 @@ class CNN():
             del embedding_
             # here we check the partial accuracy
             if epoch_number %10 == 0:
-                corrupted_acc = self._custom_eval(orig_x_train[corrupted_idxs],
+                corrupted_loss, corrupted_acc = self._custom_eval(orig_x_train[corrupted_idxs],
                                                   orig_y_train[corrupted_idxs],
                                                   batch_size
                                                  )
                 if len(uncorrupted_idxs>0):
-                    uncorrupted_acc = self._custom_eval(orig_x_train[uncorrupted_idxs],
-                                                      orig_y_train[uncorrupted_idxs],
-                                                      batch_size
-                                                     )
+                    uncorrupted_loss, uncorrupted_acc = self._custom_eval(orig_x_train[uncorrupted_idxs],
+                                                          orig_y_train[uncorrupted_idxs],
+                                                          batch_size
+                                                        )
                     try:
                         with open(directory_save+'/uncorr_acc.txt', 'a') as log_file:
                             log_file.write("{}, ".format(uncorrupted_acc))
+                        with open(directory_save+'/uncorr_loss.txt', 'a') as log_file:
+                            log_file.write("{}, ".format(uncorrupted_loss))
                     except:
                         log_file = open(directory_save+'/uncorr_acc.txt', 'w')
                         log_file.write("{}, ".format(uncorrupted_acc))
+                        log_file = open(directory_save+'/uncorr_loss.txt', 'w')
+                        log_file.write("{}, ".format(uncorrupted_loss))
                 try:
                     with open(directory_save+'/corr_acc.txt', 'a') as log_file:
                         log_file.write("{}, ".format(corrupted_acc))
+                    with open(directory_save+'/corr_loss.txt', 'a') as log_file:
+                        log_file.write("{}, ".format(corrupted_loss))
                 except:
                         log_file = open(directory_save+'/corr_acc.txt', 'w')
                         log_file.write("{}, ".format(corrupted_acc))
+                        log_file = open(directory_save+'/corr_loss.txt', 'w')
+                        log_file.write("{}, ".format(corrupted_loss))
 
-               
-                
             epoch_number +=1
         self.training_history=history
         self.embeddings = embeddings
