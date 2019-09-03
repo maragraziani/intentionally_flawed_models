@@ -294,7 +294,7 @@ class CNN():
         embeddings=[]
         batch_size=self.batch_size
         print self.model.summary()
-
+        
         #layers_of_interest = [layer.name for layer in self.model.layers[2:-1]]
         if self.deep==2:
             layer_idxs = [9,13,16]
@@ -304,13 +304,13 @@ class CNN():
              layer_idxs = [9,12,15,19,22]
         if self.deep==5:
              layer_idxs = [9,12,15,18,22,25]
-
+            
         layers_of_interest = [self.model.layers[layer_idx].name for layer_idx in layer_idxs]
         print 'loi', layers_of_interest
         self.model.metrics_tensors += [layer.output for layer in self.model.layers if layer.name in layers_of_interest]
         epoch_number = 0
 
-
+        
         n_batches = len(x_train)/self.batch_size
         remaining = len(x_train)-n_batches * self.batch_size
         while epoch_number <= self.epochs:
@@ -334,7 +334,7 @@ class CNN():
             while batch_number <= n_batches:
 
                 outs=self.model.train_on_batch(
-                    x_train[batch_number*batch_size:batch_number*batch_size + batch_size],
+                    x_train[batch_number*batch_size:batch_number*batch_size + batch_size], 
                     y_train[batch_number*batch_size:batch_number*batch_size + batch_size])
                 embedding_[0][batch_number*batch_size: batch_number*batch_size+batch_size]= outs[2].reshape((min(batch_size,len(outs[2])),-1))
                 embedding_[1][batch_number*batch_size: batch_number*batch_size+batch_size]=outs[3].reshape((len(outs[3]),-1))
@@ -358,7 +358,7 @@ class CNN():
             epoch_number +=1
         self.training_history=history
         self.embeddings = embeddings
-
+        
     def _custom_eval(self, x, y, batch_size):
         ## correcting shape-related issues
         x = x.reshape(x.shape[0], x.shape[2], x.shape[3], x.shape[4])
@@ -379,19 +379,19 @@ class CNN():
             end_batch += batch_size
         #print("Val: {}".format(np.mean(np.asarray(scores))))
         return np.mean(np.asarray(scores))
-
+        
     def train_and_monitor_with_rcvs(self, dataset, layers_of_interest=[], directory_save='',custom_epochs=0):
         '''
         Train and Monitor with RCVs
         \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-          Similar to train and compute RCVs, we just keep track
+          Similar to train and compute RCVs, we just keep track 
           of accuracy, partial accuracy (split in true and false labels)
-          and we keep track of the embeddings corresponding to true and
-          false labels.
+          and we keep track of the embeddings corresponding to true and 
+          false labels. 
           The function saves the embeddings at each epoch in a npy file.
-          The mask of corrupted labels is saved in a separated npy file.
+          The mask of corrupted labels is saved in a separated npy file. 
         \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-        Inputs:
+        Inputs:  
         dataset: Object of class either MNISTRandom, ImageNet10Random or Cifar10Random
           gives the object with rhe training data (dataset.x_train, dataset.y_train)
         name, string
@@ -425,7 +425,7 @@ class CNN():
         # We shuffle the dataset indeces in a new array
         idxs_train = np.arange(len(x_train))
         np.random.shuffle(idxs_train)
-        # List of corrupted and uncorrupted indeces in
+        # List of corrupted and uncorrupted indeces in 
         # the original ordering of the data
         corrupted_idxs = np.argwhere(train_mask == True)
         uncorrupted_idxs = np.argwhere(train_mask == False)
@@ -446,11 +446,17 @@ class CNN():
         #y_train = dataset.y_train
         #if x_train
         #x_train = x_train / 255.0
-        # converting the labels to categorical
+        # converting the labels to categorical 
         try:
             shape1, shape2 = y_train.shape()
         except:
             y_train = keras.utils.to_categorical(y_train)
+        # converting also the original labels to categorical 
+        # (for custom_eval_)
+        try:
+            shape1, shape2 = orig_y_train.shape()
+        except:
+            orig_y_train = keras.utils.to_categorical(orig_y_train)
         # variables for logs and monitoring
         history=[]
         embeddings=[]
@@ -484,16 +490,17 @@ class CNN():
                 outs=self.model.train_on_batch(
                     x_train[batch_number*batch_size:batch_number*batch_size + batch_size],
                     y_train[batch_number*batch_size:batch_number*batch_size + batch_size])
+                #import pdb; pdb.set_trace()
                 embedding_[0][batch_number*batch_size: batch_number*batch_size+batch_size]=outs[2].reshape((min(batch_size,len(outs[2])),-1))
                 embedding_[1][batch_number*batch_size: batch_number*batch_size+batch_size]=outs[3].reshape((len(outs[3]),-1))
-                embedding_[2][batch_number*batch_size: batch_number*batch_size+batch_size]=outs[4].reshape((len(outs[4]),-1))
+                #embedding_[2][batch_number*batch_size: batch_number*batch_size+batch_size]=outs[4].reshape((len(outs[4]),-1))
                 #embedding_[3][batch_number*batch_size: batch_number*batch_size+batch_size]=outs[5].reshape((len(outs[5]),-1))
                 #print outs, outs
                 history.append(outs[0])
                 batch_number+=1
             c=0
             for l in layers_of_interest:
-                np.save('{}_training_emb_e{}_l{}'.format(name,epoch_number, l), embedding_[c])
+                np.save('{}/_training_emb_e{}_l{}'.format(directory_save,epoch_number, l), embedding_[c])
                 c+=1
             del embedding_
             # here we check the partial accuracy
@@ -502,10 +509,17 @@ class CNN():
                                                   orig_y_train[corrupted_idxs],
                                                   batch_size
                                                  )
-                uncorrupted_acc = self._custom_eval(orig_x_train[uncorrupted_idxs],
-                                                  orig_y_train[uncorrupted_idxs],
-                                                  batch_size
-                                                 )
+                if len(uncorrupted_idxs>0):
+                    uncorrupted_acc = self._custom_eval(orig_x_train[uncorrupted_idxs],
+                                                      orig_y_train[uncorrupted_idxs],
+                                                      batch_size
+                                                     )
+                    try:
+                        with open(directory_save+'/uncorr_acc.txt', 'a') as log_file:
+                            log_file.write("{}, ".format(uncorrupted_acc))
+                    except:
+                        log_file = open(directory_save+'/uncorr_acc.txt', 'w')
+                        log_file.write("{}, ".format(uncorrupted_acc))
                 try:
                     with open(directory_save+'/corr_acc.txt', 'a') as log_file:
                         log_file.write("{}, ".format(corrupted_acc))
@@ -513,18 +527,13 @@ class CNN():
                         log_file = open(directory_save+'/corr_acc.txt', 'w')
                         log_file.write("{}, ".format(corrupted_acc))
 
-                try:
-                    with open(directory_save+'/uncorr_acc.txt', 'a') as log_file:
-                        log_file.write("{}, ".format(uncorrupted_acc))
-                except:
-                    log_file = open(directory_save+'/uncorr_acc.txt', 'w')
-                    log_file.write("{}, ".format(uncorrupted_acc))
-
+               
+                
             epoch_number +=1
         self.training_history=history
         self.embeddings = embeddings
 
-
+        
     def save(self, name, folder):
         try:
             os.listdir(folder)
