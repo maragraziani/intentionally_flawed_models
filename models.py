@@ -190,7 +190,7 @@ class CNN():
     '''
 
     def __init__(self, deep=2, wide=384, optimizer='SGD', lr=1e-2, epochs=9,
-                 batch_size=16, input_shape=299, n_classes=10, save_fold='', **kwargs):
+                 batch_size=64, input_shape=299, n_classes=10, save_fold='', **kwargs):
 
         #mask_shape = np.ones((1,512))
         #mask = keras.backend.variable(mask_shape)
@@ -479,32 +479,53 @@ class CNN():
                 #print 'in layer ', l
                 #print 'output shape ', self.model.get_layer(l).output.shape
                 #print 'metrics tensors, ', self.model.metrics_tensors
+                
                 if len(self.model.get_layer(l).output.shape)<=2:
                     space = np.zeros((len(x_train), self.model.get_layer(l).output.shape[-1]))
                 else:
                     x = self.model.get_layer(l).output.shape[-3]
                     y = self.model.get_layer(l).output.shape[-2]
                     z = self.model.get_layer(l).output.shape[-1]
-                    space = np.zeros((len(x_train), x*y*z))
-
+                    space = np.zeros((len(x_train), z))
                 embedding_.append(space)
+             
             while batch_number <= n_batches:
+                #print("Batch {}/{}".format(batch_number, n_batches))
                 outs=self.model.train_on_batch(
                     x_train[batch_number*batch_size:batch_number*batch_size + batch_size],
                     y_train[batch_number*batch_size:batch_number*batch_size + batch_size])
-                #import pdb; pdb.set_trace()
-                embedding_[0][batch_number*batch_size: batch_number*batch_size+batch_size]=outs[2].reshape((min(batch_size,len(outs[2])),-1))
-                embedding_[1][batch_number*batch_size: batch_number*batch_size+batch_size]=outs[3].reshape((len(outs[3]),-1))
+                
+                _n,_x,_y,_z= outs[2].shape
+                embedding_[0][batch_number*batch_size: batch_number*batch_size+batch_size]= np.mean(outs[2].reshape(_n, _x*_y,_z), axis=1) #outs[2].reshape((min(batch_size,len(outs[2])),-1))
+                _n,_x,_y,_z= outs[3].shape
+                embedding_[1][batch_number*batch_size: batch_number*batch_size+batch_size]= np.mean(outs[3].reshape(_n, _x*_y,_z), axis=1) #outs[3].reshape((len(outs[3]),-1))
                 #embedding_[2][batch_number*batch_size: batch_number*batch_size+batch_size]=outs[4].reshape((len(outs[4]),-1))
                 #embedding_[3][batch_number*batch_size: batch_number*batch_size+batch_size]=outs[5].reshape((len(outs[5]),-1))
                 #print outs, outs
+               
                 history.append(outs[0])
                 batch_number+=1
             c=0
+            '''
+            if True:
+                for l in layers_of_interest:
+                    if 'max_pooling' in l:
+                        #import pdb; pdb.set_trace()
+                        import pdb; pdb.set_trace()
+                        _n,_x,_y,_z= embedding_[c].shape
+                        tosave_= np.mean(embedding_[c].reshape(n, x*y,z), axis=1)
+                        np.save('{}/_training_emb_e{}_l{}'.format(source,epoch_number, l), tosave_)
+                        #np.mean(embedding_[0].reshape(12775, 31*31,200), axis=1).shape
+                    else:
+                        np.save('{}/_training_emb_e{}_l{}'.format(source,epoch_number, l), embedding_[c])
+                    c+=1
+            del embedding_
+            '''
             for l in layers_of_interest:
                 np.save('{}/_training_emb_e{}_l{}'.format(directory_save,epoch_number, l), embedding_[c])
                 c+=1
             del embedding_
+           
             # here we check the partial accuracy
             if epoch_number %10 == 0:
                 corrupted_loss, corrupted_acc = self._custom_eval(orig_x_train[corrupted_idxs],
