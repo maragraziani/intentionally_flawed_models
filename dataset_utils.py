@@ -318,7 +318,7 @@ class ImageNet10Random():
         #labels = [int(x) for x in labels]
         # corruption
         self.y_train = labels
-        self.train_mask = mask
+        self.train_mask = mask #saving which labels were actually perturbed
         
     def gaussian_noise(self, gaussian_noise_f):
         # Adds Gaussian Noise to the images,
@@ -344,10 +344,16 @@ class CIFAR10Random():
       Default 10.
     '''
 
-    def __init__(self, label_corrupt_p=0.0, gaussian_noise_f = 0.0, num_classes=10, **kwargs):
+    def __init__(self, label_corrupt_p=0.0, gaussian_noise_f = 0.0, num_classes=10, random_seed=1,
+                 **kwargs):
         #super(CIFAR10Random, self).__init__(**kwargs)
         (self.x_train, self.y_train), (self.x_test, self.y_test) = keras.datasets.cifar10.load_data()
         self.num_classes = num_classes
+        #import pdb; pdb.set_trace()
+        self.y_train = self.y_train.T[0]
+        self.y_test = self.y_test.T[0]
+        self._train_mask = np.zeros(len(self.y_train)) #to save which examples were corrupted, if any
+        self.seed = random_seed
         # note: corruption is performed on the training set.
         # you test on real data to check generalization
         if label_corrupt_p > 0.0:
@@ -356,6 +362,30 @@ class CIFAR10Random():
             self.gaussian_noise(gaussian_noise_f)
 
     def label_corrupt(self, corrupted):
+        ## NEW VERSION
+        # Corrupts the labels in the training set according to
+        # the specified corruption probability
+        print 'NEW VERS'
+        labels=np.array(self.y_train)
+        #labels = np.reshape(len(labels),1)
+        np.random.seed(self.seed)
+        mask = np.random.rand(len(labels)) <= corrupted
+        #rnd_labels = np.random.choice(self.num_classes, mask.sum())
+        true_labels = labels[mask]
+        #rnd_labels = np.reshape(rnd_labels, (len(rnd_labels),1))
+        #labels[mask] = rnd_labels
+        print true_labels
+        print np.shape(true_labels)
+        np.random.shuffle(true_labels)
+        print true_labels
+        print np.shape(true_labels)
+        labels[mask] = true_labels
+        #labels = [int(x) for x in labels]
+        # corruption
+        self.y_train = labels
+        self.train_mask = mask
+        '''       
+        
         # Corrupts the labels in the training set according to
         # the specified corruption probability
         labels=np.array(self.y_train)
@@ -368,7 +398,9 @@ class CIFAR10Random():
         labels = [int(x) for x in labels]
         # corruption
         self.y_train = labels
-
+        self.train_mask = mask #saving which labels were actually perturbed
+        '''
+        
     def gaussian_noise(self, gaussian_noise_f):
         # Adds Gaussian Noise to the images,
         # matching the real dataset's mean and variance
